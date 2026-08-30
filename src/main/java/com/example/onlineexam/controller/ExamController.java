@@ -77,6 +77,16 @@ public class ExamController {
         return ResponseEntity.ok(examService.updateExam(id, req, user.getUsername()));
     }
 
+    /** 開放 / 關閉測驗（enable / disable） */
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<ExamSummaryResponse> setExamStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody SetExamStatusRequest req,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(examService.setExamActive(id, req.active(), user.getUsername()));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('TEACHER')")
     public ResponseEntity<Void> deleteExam(
@@ -96,6 +106,17 @@ public class ExamController {
             @AuthenticationPrincipal UserDetails user) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(examService.addQuestion(examId, req, user.getUsername()));
+    }
+
+    /** 批次匯入題目 */
+    @PostMapping("/{examId}/questions/batch")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<List<QuestionDetailResponse>> batchImportQuestions(
+            @PathVariable Long examId,
+            @Valid @RequestBody BatchQuestionsRequest req,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(examService.batchImportQuestions(examId, req.questions(), user.getUsername()));
     }
 
     @PutMapping("/questions/{questionId}")

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -91,6 +92,15 @@ public class ExamService {
         examRepository.delete(exam);
     }
 
+    /** 開放 / 關閉測驗（enable / disable） */
+    @Transactional
+    public ExamSummaryResponse setExamActive(Long examId, boolean active, String username) {
+        Exam exam = findExamById(examId);
+        checkOwnership(exam, username);
+        exam.setActive(active);
+        return toSummary(examRepository.save(exam));
+    }
+
     // ── 題目 CRUD ─────────────────────────────────────────────────────────────
 
     @Transactional
@@ -125,6 +135,27 @@ public class ExamService {
         Question q = findQuestionById(questionId);
         checkOwnership(q.getExam(), username);
         questionRepository.delete(q);
+    }
+
+    /** 批次匯入題目 */
+    @Transactional
+    public List<QuestionDetailResponse> batchImportQuestions(
+            Long examId, List<QuestionRequest> requests, String username) {
+        Exam exam = findExamById(examId);
+        checkOwnership(exam, username);
+        List<QuestionDetailResponse> saved = new ArrayList<>();
+        for (QuestionRequest req : requests) {
+            Question q = questionRepository.save(Question.builder()
+                    .exam(exam)
+                    .questionText(req.questionText())
+                    .optionA(req.optionA()).optionB(req.optionB())
+                    .optionC(req.optionC()).optionD(req.optionD())
+                    .correctAnswer(req.correctAnswer())
+                    .points(req.points() != null ? req.points() : 1)
+                    .build());
+            saved.add(toQuestionDetail(q));
+        }
+        return saved;
     }
 
     // ── 內部輔助方法 ─────────────────────────────────────────────────────────
