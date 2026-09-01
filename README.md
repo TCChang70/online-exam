@@ -1,5 +1,5 @@
 # 線上測驗系統 (Online Exam API)
-## https://online-exam-rwpc.onrender.com/
+## https://online-exam-uq9y.onrender.com/
 > Spring Boot 3 + Spring Data JPA + SQLite + JWT 教學示範專案
 
 ## 快速開始
