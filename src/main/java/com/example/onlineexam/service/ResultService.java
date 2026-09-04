@@ -46,7 +46,7 @@ public class ResultService {
         for (Question q : questions) {
             totalPoints += q.getPoints();
             String submitted = answers.get(String.valueOf(q.getId()));
-            if (q.getCorrectAnswer().equals(submitted)) {
+            if (isCorrect(q, submitted)) {
                 score += q.getPoints();
             }
         }
@@ -103,6 +103,26 @@ public class ResultService {
         if (pct >= 70) return "C";
         if (pct >= 60) return "D";
         return "F";
+    }
+
+    /** 判斷答案是否正確：多選題比較集合（順序無關），單選題直接比較 */
+    private boolean isCorrect(Question q, String submitted) {
+        if (submitted == null || submitted.isBlank()) return false;
+        if (q.isMultiSelect()) {
+            return toSet(q.getCorrectAnswer()).equals(toSet(submitted));
+        }
+        return q.getCorrectAnswer().trim().equalsIgnoreCase(submitted.trim());
+    }
+
+    private java.util.Set<String> toSet(String s) {
+        java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
+        if (s != null) {
+            for (String part : s.split(",")) {
+                String t = part.trim();
+                if (!t.isEmpty()) set.add(t.toUpperCase());
+            }
+        }
+        return set;
     }
 
     private User findUserByUsername(String username) {

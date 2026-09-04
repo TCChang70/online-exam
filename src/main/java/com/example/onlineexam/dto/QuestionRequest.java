@@ -8,6 +8,12 @@ public record QuestionRequest(
     @NotBlank String optionB,
     @NotBlank String optionC,
     @NotBlank String optionD,
-    @NotBlank @Pattern(regexp = "[ABCD]", message = "正確答案必須是 A、B、C 或 D") String correctAnswer,
+    String optionE,
+    String optionF,
+    String optionG,
+    String optionH,
+    String optionI,
+    Boolean multiSelect,
+    @NotBlank @Pattern(regexp = "[A-I](?:,[A-I])*", message = "正確答案必須是 A-I 的組合（多選以逗號分隔，如 A,C）") String correctAnswer,
     @Min(1) Integer points
 ) {}

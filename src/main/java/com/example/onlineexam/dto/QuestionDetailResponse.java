@@ -8,6 +8,12 @@ public record QuestionDetailResponse(
     String optionB,
     String optionC,
     String optionD,
+    String optionE,
+    String optionF,
+    String optionG,
+    String optionH,
+    String optionI,
+    boolean multiSelect,
     String correctAnswer,
     Integer points
 ) {}

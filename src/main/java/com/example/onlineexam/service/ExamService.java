@@ -112,6 +112,10 @@ public class ExamService {
                 .questionText(req.questionText())
                 .optionA(req.optionA()).optionB(req.optionB())
                 .optionC(req.optionC()).optionD(req.optionD())
+                .optionE(blankToNull(req.optionE())).optionF(blankToNull(req.optionF()))
+                .optionG(blankToNull(req.optionG())).optionH(blankToNull(req.optionH()))
+                .optionI(blankToNull(req.optionI()))
+                .multiSelect(Boolean.TRUE.equals(req.multiSelect()))
                 .correctAnswer(req.correctAnswer())
                 .points(req.points() != null ? req.points() : 1)
                 .build());
@@ -125,6 +129,10 @@ public class ExamService {
         q.setQuestionText(req.questionText());
         q.setOptionA(req.optionA()); q.setOptionB(req.optionB());
         q.setOptionC(req.optionC()); q.setOptionD(req.optionD());
+        q.setOptionE(blankToNull(req.optionE())); q.setOptionF(blankToNull(req.optionF()));
+        q.setOptionG(blankToNull(req.optionG())); q.setOptionH(blankToNull(req.optionH()));
+        q.setOptionI(blankToNull(req.optionI()));
+        q.setMultiSelect(Boolean.TRUE.equals(req.multiSelect()));
         q.setCorrectAnswer(req.correctAnswer());
         if (req.points() != null) q.setPoints(req.points());
         return toQuestionDetail(questionRepository.save(q));
@@ -150,12 +158,20 @@ public class ExamService {
                     .questionText(req.questionText())
                     .optionA(req.optionA()).optionB(req.optionB())
                     .optionC(req.optionC()).optionD(req.optionD())
+                    .optionE(blankToNull(req.optionE())).optionF(blankToNull(req.optionF()))
+                    .optionG(blankToNull(req.optionG())).optionH(blankToNull(req.optionH()))
+                    .optionI(blankToNull(req.optionI()))
+                    .multiSelect(Boolean.TRUE.equals(req.multiSelect()))
                     .correctAnswer(req.correctAnswer())
                     .points(req.points() != null ? req.points() : 1)
                     .build());
             saved.add(toQuestionDetail(q));
         }
         return saved;
+    }
+
+    private static String blankToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s;
     }
 
     // ── 內部輔助方法 ─────────────────────────────────────────────────────────
@@ -190,11 +206,14 @@ public class ExamService {
     private QuestionDetailResponse toQuestionDetail(Question q) {
         return new QuestionDetailResponse(q.getId(), q.getQuestionText(),
                 q.getOptionA(), q.getOptionB(), q.getOptionC(), q.getOptionD(),
-                q.getCorrectAnswer(), q.getPoints());
+                q.getOptionE(), q.getOptionF(), q.getOptionG(), q.getOptionH(), q.getOptionI(),
+                q.isMultiSelect(), q.getCorrectAnswer(), q.getPoints());
     }
 
     private QuestionStudentResponse toQuestionStudent(Question q) {
         return new QuestionStudentResponse(q.getId(), q.getQuestionText(),
-                q.getOptionA(), q.getOptionB(), q.getOptionC(), q.getOptionD(), q.getPoints());
+                q.getOptionA(), q.getOptionB(), q.getOptionC(), q.getOptionD(),
+                q.getOptionE(), q.getOptionF(), q.getOptionG(), q.getOptionH(), q.getOptionI(),
+                q.isMultiSelect(), q.getPoints());
     }
 }

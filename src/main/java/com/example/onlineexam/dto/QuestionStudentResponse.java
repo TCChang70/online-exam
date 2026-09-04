@@ -8,5 +8,11 @@ public record QuestionStudentResponse(
     String optionB,
     String optionC,
     String optionD,
+    String optionE,
+    String optionF,
+    String optionG,
+    String optionH,
+    String optionI,
+    boolean multiSelect,
     Integer points
 ) {}
