@@ -86,6 +86,61 @@ public class ResultService {
                 .stream().map(this::toResultResponse).toList();
     }
 
+    /** 教師檢視單一學生的作答明細（每題的學生答案、正確答案、對錯） */
+    @Transactional(readOnly = true)
+    public StudentExamResultDetailResponse getExamResultDetail(Long examId, Long resultId, String username) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "找不到測驗"));
+        if (exam.getCreatedBy() == null || !exam.getCreatedBy().getUsername().equals(username)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "您沒有權限查看此測驗的作答紀錄");
+        }
+
+        ExamResult result = examResultRepository.findById(resultId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "找不到作答紀錄"));
+        if (!result.getExam().getId().equals(examId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "作答紀錄不屬於此測驗");
+        }
+
+        Map<String, String> submitted = parseAnswers(result.getAnswers());
+        List<Question> questions = questionRepository.findByExamOrderByIdAsc(exam);
+
+        int correctCount = 0;
+        List<AnswerRecordResponse> answers = new java.util.ArrayList<>();
+        for (Question q : questions) {
+            String studentAnswer = submitted.get(String.valueOf(q.getId()));
+            boolean correct = isCorrect(q, studentAnswer);
+            if (correct) correctCount++;
+            answers.add(new AnswerRecordResponse(
+                    q.getId(), q.getQuestionText(),
+                    q.getOptionA(), q.getOptionB(), q.getOptionC(), q.getOptionD(),
+                    q.getOptionE(), q.getOptionF(), q.getOptionG(), q.getOptionH(), q.getOptionI(),
+                    q.isMultiSelect(), q.getPoints(),
+                    studentAnswer == null ? "" : studentAnswer,
+                    q.getCorrectAnswer(),
+                    correct));
+        }
+
+        double pct = result.getTotalPoints() > 0
+                ? (double) result.getScore() / result.getTotalPoints() * 100 : 0;
+        double roundedPct = Math.round(pct * 10.0) / 10.0;
+        return new StudentExamResultDetailResponse(
+                result.getId(), exam.getId(), exam.getTitle(),
+                result.getUser().getDisplayName(), result.getUser().getClassName(),
+                result.getScore(), result.getTotalPoints(), roundedPct,
+                calculateGrade(pct), result.getSubmittedAt(),
+                correctCount, answers);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> parseAnswers(String json) {
+        if (json == null || json.isBlank()) return Map.of();
+        try {
+            return objectMapper.readValue(json, Map.class);
+        } catch (Exception e) {
+            return Map.of();
+        }
+    }
+
     private ResultResponse toResultResponse(ExamResult r) {
         double pct = r.getTotalPoints() > 0
                 ? (double) r.getScore() / r.getTotalPoints() * 100 : 0;

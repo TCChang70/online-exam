@@ -1,6 +1,7 @@
 package com.example.onlineexam.controller;
 
 import com.example.onlineexam.dto.ResultResponse;
+import com.example.onlineexam.dto.StudentExamResultDetailResponse;
 import com.example.onlineexam.service.ResultService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -32,5 +33,15 @@ public class ResultController {
             @PathVariable Long examId,
             @AuthenticationPrincipal UserDetails user) {
         return ResponseEntity.ok(resultService.getExamResults(examId, user.getUsername()));
+    }
+
+    /** 查詢某位學生在該測驗的作答明細（教師限定） */
+    @GetMapping("/exam/{examId}/{resultId}")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<StudentExamResultDetailResponse> getExamResultDetail(
+            @PathVariable Long examId,
+            @PathVariable Long resultId,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(resultService.getExamResultDetail(examId, resultId, user.getUsername()));
     }
 }
