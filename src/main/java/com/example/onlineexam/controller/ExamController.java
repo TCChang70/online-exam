@@ -87,6 +87,16 @@ public class ExamController {
         return ResponseEntity.ok(examService.setExamActive(id, req.active(), user.getUsername()));
     }
 
+    /** 更新測驗設定：可重複作答、隱藏成績（教師專用） */
+    @PatchMapping("/{id}/settings")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<ExamSummaryResponse> updateExamSettings(
+            @PathVariable Long id,
+            @RequestBody ExamSettingsRequest req,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(examService.updateExamSettings(id, req, user.getUsername()));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('TEACHER')")
     public ResponseEntity<Void> deleteExam(

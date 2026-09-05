@@ -5,8 +5,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "exam_results",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "exam_id"}))
+@Table(name = "exam_results")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -32,4 +31,13 @@ public class ExamResult {
     private Integer score;
     private Integer totalPoints;
     private LocalDateTime submittedAt;
+
+    /** 軟刪除旗標：true＝教師已刪除（資料保留但列表隱藏） */
+    @Builder.Default
+    private Boolean deleted = false;
+
+    /** NULL 安全：預設為未刪除 */
+    public boolean isDeleted() {
+        return Boolean.TRUE.equals(deleted);
+    }
 }

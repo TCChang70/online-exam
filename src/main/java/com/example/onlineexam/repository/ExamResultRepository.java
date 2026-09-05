@@ -6,13 +6,11 @@ import com.example.onlineexam.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
-import java.util.Optional;
 
 public interface ExamResultRepository extends JpaRepository<ExamResult, Long> {
     List<ExamResult> findByUserOrderBySubmittedAtDesc(User user);
     List<ExamResult> findByExamOrderByScoreDesc(Exam exam);
-    Optional<ExamResult> findByUserAndExam(User user, Exam exam);
-    boolean existsByUserAndExam(User user, Exam exam);
+    List<ExamResult> findByUserAndExamOrderByIdAsc(User user, Exam exam);
 
     @Transactional
     void deleteByExam(Exam exam);

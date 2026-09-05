@@ -8,6 +8,8 @@ public record ExamDetailResponse(
     String description,
     Integer timeLimit,
     boolean active,
+    boolean allowRetake,
+    boolean hideResult,
     String createdBy,
     List<QuestionDetailResponse> questions
 ) {}

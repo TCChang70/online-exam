@@ -6,5 +6,7 @@ public record ExamSummaryResponse(
     String description,
     Integer timeLimit,
     int questionCount,
-    boolean active
+    boolean active,
+    boolean allowRetake,
+    boolean hideResult
 ) {}

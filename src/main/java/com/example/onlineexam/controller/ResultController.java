@@ -44,4 +44,33 @@ public class ResultController {
             @AuthenticationPrincipal UserDetails user) {
         return ResponseEntity.ok(resultService.getExamResultDetail(examId, resultId, user.getUsername()));
     }
+
+    /** 查詢已刪除（軟刪除）的作答紀錄，供教師復原（教師限定） */
+    @GetMapping("/exam/{examId}/deleted")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<List<ResultResponse>> getDeletedExamResults(
+            @PathVariable Long examId,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(resultService.getDeletedExamResults(examId, user.getUsername()));
+    }
+
+    /** 教師軟刪除某筆學生的作答紀錄 */
+    @DeleteMapping("/{resultId}")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<Void> softDeleteResult(
+            @PathVariable Long resultId,
+            @AuthenticationPrincipal UserDetails user) {
+        resultService.softDeleteResult(resultId, user.getUsername());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** 教師復原已刪除的作答紀錄 */
+    @PostMapping("/{resultId}/restore")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<Void> restoreResult(
+            @PathVariable Long resultId,
+            @AuthenticationPrincipal UserDetails user) {
+        resultService.restoreResult(resultId, user.getUsername());
+        return ResponseEntity.noContent().build();
+    }
 }

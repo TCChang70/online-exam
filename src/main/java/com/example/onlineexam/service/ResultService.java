@@ -34,8 +34,12 @@ public class ResultService {
         if (!exam.isActive()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "此測驗目前未開放");
         }
-        if (examResultRepository.existsByUserAndExam(user, exam)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "您已提交過此測驗，不可重複作答");
+        if (!exam.isAllowRetake()) {
+            boolean alreadyTaken = examResultRepository.findByUserAndExamOrderByIdAsc(user, exam)
+                    .stream().anyMatch(r -> !r.isDeleted());
+            if (alreadyTaken) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "此測驗不允許重複作答");
+            }
         }
 
         List<Question> questions = questionRepository.findByExamOrderByIdAsc(exam);
@@ -65,14 +69,21 @@ public class ResultService {
                 .submittedAt(LocalDateTime.now())
                 .build());
 
-        return toResultResponse(result);
+        int attemptNumber = (int) examResultRepository.findByUserAndExamOrderByIdAsc(user, exam)
+                .stream().filter(r -> !r.isDeleted()).count();
+        return toResultResponse(result, attemptNumber, exam.isHideResult());
     }
 
     @Transactional(readOnly = true)
     public List<ResultResponse> getMyResults(String username) {
         User user = findUserByUsername(username);
-        return examResultRepository.findByUserOrderBySubmittedAtDesc(user)
-                .stream().map(this::toResultResponse).toList();
+        List<ExamResult> results = examResultRepository.findByUserOrderBySubmittedAtDesc(user)
+                .stream().filter(r -> !r.isDeleted()).toList();
+        Map<Long, Integer> attemptMap = buildAttemptMap(results);
+        return results.stream()
+                .map(r -> toResultResponse(r, attemptMap.get(r.getId()),
+                        r.getExam().isHideResult()))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -82,8 +93,55 @@ public class ResultService {
         if (exam.getCreatedBy() == null || !exam.getCreatedBy().getUsername().equals(username)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "您沒有權限查看此測驗的成績");
         }
-        return examResultRepository.findByExamOrderByScoreDesc(exam)
-                .stream().map(this::toResultResponse).toList();
+        List<ExamResult> results = examResultRepository.findByExamOrderByScoreDesc(exam)
+                .stream().filter(r -> !r.isDeleted()).toList();
+        Map<Long, Integer> attemptMap = buildAttemptMap(results);
+        // 教師可查看全部成績，不受隱藏設定影響
+        return results.stream()
+                .map(r -> toResultResponse(r, attemptMap.get(r.getId()), false))
+                .toList();
+    }
+
+    /** 教師取得某場測驗所有「已刪除」的作答紀錄（供復原用） */
+    @Transactional(readOnly = true)
+    public List<ResultResponse> getDeletedExamResults(Long examId, String username) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "找不到測驗"));
+        if (exam.getCreatedBy() == null || !exam.getCreatedBy().getUsername().equals(username)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "您沒有權限查看此測驗的成績");
+        }
+        List<ExamResult> results = examResultRepository.findByExamOrderByScoreDesc(exam)
+                .stream().filter(ExamResult::isDeleted).toList();
+        Map<Long, Integer> attemptMap = buildAttemptMap(results);
+        return results.stream()
+                .map(r -> toResultResponse(r, attemptMap.get(r.getId()), false))
+                .toList();
+    }
+
+    /** 教師軟刪除某筆作答紀錄（資料保留、僅隱藏） */
+    @Transactional
+    public void softDeleteResult(Long resultId, String username) {
+        ExamResult result = findOwnedResult(resultId, username);
+        result.setDeleted(true);
+        examResultRepository.save(result);
+    }
+
+    /** 教師復原已刪除的作答紀錄 */
+    @Transactional
+    public void restoreResult(Long resultId, String username) {
+        ExamResult result = findOwnedResult(resultId, username);
+        result.setDeleted(false);
+        examResultRepository.save(result);
+    }
+
+    private ExamResult findOwnedResult(Long resultId, String username) {
+        ExamResult result = examResultRepository.findById(resultId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "找不到作答紀錄"));
+        Exam exam = result.getExam();
+        if (exam.getCreatedBy() == null || !exam.getCreatedBy().getUsername().equals(username)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "您沒有權限操作此作答紀錄");
+        }
+        return result;
     }
 
     /** 教師檢視單一學生的作答明細（每題的學生答案、正確答案、對錯） */
@@ -99,6 +157,9 @@ public class ResultService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "找不到作答紀錄"));
         if (!result.getExam().getId().equals(examId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "作答紀錄不屬於此測驗");
+        }
+        if (result.isDeleted()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "此作答紀錄已刪除");
         }
 
         Map<String, String> submitted = parseAnswers(result.getAnswers());
@@ -141,7 +202,14 @@ public class ResultService {
         }
     }
 
-    private ResultResponse toResultResponse(ExamResult r) {
+    private ResultResponse toResultResponse(ExamResult r, Integer attemptNumber, boolean hideScore) {
+        if (hideScore) {
+            return new ResultResponse(r.getId(), r.getExam().getId(),
+                    r.getExam().getTitle(), r.getUser().getDisplayName(),
+                    r.getUser().getClassName(),
+                    null, r.getTotalPoints(), null, null, r.getSubmittedAt(),
+                    attemptNumber, true);
+        }
         double pct = r.getTotalPoints() > 0
                 ? (double) r.getScore() / r.getTotalPoints() * 100 : 0;
         double roundedPct = Math.round(pct * 10.0) / 10.0;
@@ -149,7 +217,22 @@ public class ResultService {
                 r.getExam().getTitle(), r.getUser().getDisplayName(),
                 r.getUser().getClassName(),
                 r.getScore(), r.getTotalPoints(), roundedPct,
-                calculateGrade(pct), r.getSubmittedAt());
+                calculateGrade(pct), r.getSubmittedAt(),
+                attemptNumber, false);
+    }
+
+    /** 依「同一位考生、同一測驗」計算每次作答的次序（第 N 次作答） */
+    private Map<Long, Integer> buildAttemptMap(List<ExamResult> results) {
+        Map<String, Integer> counters = new java.util.HashMap<>();
+        Map<Long, Integer> map = new java.util.HashMap<>();
+        results.stream()
+                .sorted(java.util.Comparator.comparing(ExamResult::getId))
+                .forEach(r -> {
+                    String key = r.getUser().getId() + ":" + r.getExam().getId();
+                    int n = counters.merge(key, 1, Integer::sum);
+                    map.put(r.getId(), n);
+                });
+        return map;
     }
 
     private String calculateGrade(double pct) {

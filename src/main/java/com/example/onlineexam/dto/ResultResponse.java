@@ -10,7 +10,9 @@ public record ResultResponse(
     String studentClass,
     Integer score,
     Integer totalPoints,
-    double percentage,
+    Double percentage,
     String grade,
-    LocalDateTime submittedAt
+    LocalDateTime submittedAt,
+    Integer attemptNumber,
+    boolean scoreHidden
 ) {}

@@ -43,7 +43,8 @@ public class ExamService {
         String creator = exam.getCreatedBy() != null
                 ? exam.getCreatedBy().getDisplayName() : "未知";
         return new ExamDetailResponse(exam.getId(), exam.getTitle(), exam.getDescription(),
-                exam.getTimeLimit(), exam.isActive(), creator, questions);
+                exam.getTimeLimit(), exam.isActive(), exam.isAllowRetake(), exam.isHideResult(),
+                creator, questions);
     }
 
     @Transactional(readOnly = true)
@@ -69,6 +70,8 @@ public class ExamService {
                 .timeLimit(req.timeLimit() != null ? req.timeLimit() : 60)
                 .createdBy(teacher)
                 .active(true)
+                .allowRetake(req.allowRetake() == null || req.allowRetake())
+                .hideResult(Boolean.TRUE.equals(req.hideResult()))
                 .build());
         return toSummary(exam);
     }
@@ -80,6 +83,8 @@ public class ExamService {
         exam.setTitle(req.title());
         exam.setDescription(req.description());
         if (req.timeLimit() != null) exam.setTimeLimit(req.timeLimit());
+        if (req.allowRetake() != null) exam.setAllowRetake(req.allowRetake());
+        if (req.hideResult() != null) exam.setHideResult(req.hideResult());
         return toSummary(examRepository.save(exam));
     }
 
@@ -98,6 +103,16 @@ public class ExamService {
         Exam exam = findExamById(examId);
         checkOwnership(exam, username);
         exam.setActive(active);
+        return toSummary(examRepository.save(exam));
+    }
+
+    /** 更新測驗的作答 / 成績設定（可重複作答、隱藏成績） */
+    @Transactional
+    public ExamSummaryResponse updateExamSettings(Long examId, ExamSettingsRequest req, String username) {
+        Exam exam = findExamById(examId);
+        checkOwnership(exam, username);
+        if (req.allowRetake() != null) exam.setAllowRetake(req.allowRetake());
+        if (req.hideResult() != null) exam.setHideResult(req.hideResult());
         return toSummary(examRepository.save(exam));
     }
 
@@ -200,7 +215,8 @@ public class ExamService {
 
     private ExamSummaryResponse toSummary(Exam exam) {
         return new ExamSummaryResponse(exam.getId(), exam.getTitle(), exam.getDescription(),
-                exam.getTimeLimit(), questionRepository.countByExam(exam), exam.isActive());
+                exam.getTimeLimit(), questionRepository.countByExam(exam), exam.isActive(),
+                exam.isAllowRetake(), exam.isHideResult());
     }
 
     private QuestionDetailResponse toQuestionDetail(Question q) {
