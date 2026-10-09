@@ -11,6 +11,7 @@ public interface ExamResultRepository extends JpaRepository<ExamResult, Long> {
     List<ExamResult> findByUserOrderBySubmittedAtDesc(User user);
     List<ExamResult> findByExamOrderByScoreDesc(Exam exam);
     List<ExamResult> findByUserAndExamOrderByIdAsc(User user, Exam exam);
+    List<ExamResult> findByUserInOrderBySubmittedAtDesc(List<User> users);
 
     @Transactional
     void deleteByExam(Exam exam);

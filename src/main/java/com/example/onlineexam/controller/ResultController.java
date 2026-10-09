@@ -1,7 +1,9 @@
 package com.example.onlineexam.controller;
 
+import com.example.onlineexam.dto.ClassReportResponse;
 import com.example.onlineexam.dto.ResultResponse;
 import com.example.onlineexam.dto.StudentExamResultDetailResponse;
+import com.example.onlineexam.dto.StudentReportResponse;
 import com.example.onlineexam.service.ResultService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,31 @@ public class ResultController {
     public ResponseEntity<List<ResultResponse>> getMyResults(
             @AuthenticationPrincipal UserDetails user) {
         return ResponseEntity.ok(resultService.getMyResults(user.getUsername()));
+    }
+
+    /** 學生本人跨測驗成績報表 */
+    @GetMapping("/my/report")
+    public ResponseEntity<StudentReportResponse> getMyReport(
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(resultService.getMyStudentReport(user.getUsername()));
+    }
+
+    /** 教師檢視某位學生的跨測驗成績報表（教師限定） */
+    @GetMapping("/student/{studentId}/report")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<StudentReportResponse> getStudentReport(
+            @PathVariable Long studentId,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(resultService.getStudentReport(studentId, user.getUsername()));
+    }
+
+    /** 教師檢視班級成績報表（教師限定） */
+    @GetMapping("/report/class")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<ClassReportResponse> getClassReport(
+            @RequestParam(required = false) String className,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(resultService.getClassReport(className, user.getUsername()));
     }
 
     /** 查詢某場測驗的所有學生成績（教師限定） */

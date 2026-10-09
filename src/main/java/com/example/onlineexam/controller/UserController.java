@@ -13,7 +13,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/students")
@@ -57,6 +60,35 @@ public class UserController {
                 .build());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new StudentResponse(user.getId(), user.getUsername(), user.getDisplayName(), user.getClassName()));
+    }
+
+    /** 批次匯入學生帳號：跳過已存在/批次內重複的帳號，其餘建立 */
+    @PostMapping("/batch")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<BatchStudentsResponse> batchImportStudents(
+            @Valid @RequestBody BatchStudentsRequest req) {
+        List<StudentResponse> created = new ArrayList<>();
+        List<String> duplicates = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (CreateUserRequest r : req.students()) {
+            String username = r.username() == null ? "" : r.username().trim();
+            if (seen.contains(username) || userRepository.existsByUsername(username)) {
+                duplicates.add(username);
+                continue;
+            }
+            seen.add(username);
+            User user = userRepository.save(User.builder()
+                    .username(r.username())
+                    .password(passwordEncoder.encode(r.password()))
+                    .displayName(r.displayName())
+                    .className(r.className())
+                    .role("ROLE_STUDENT")
+                    .build());
+            created.add(new StudentResponse(user.getId(), user.getUsername(),
+                    user.getDisplayName(), user.getClassName()));
+        }
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new BatchStudentsResponse(created.size(), created, duplicates));
     }
 
     @PutMapping("/{id}")
